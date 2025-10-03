@@ -6,7 +6,13 @@ use arrow2::{
 use memchr::memchr_iter;
 use memmap2::Mmap;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use std::{collections::HashMap, fs::File, path::Path, str, sync::Arc};
+use std::{
+    collections::HashMap,
+    fs::File,
+    path::Path,
+    str,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     helpers::simd_helpers::{aggregate_f64_avx2, aggregate_i64_avx2, filter_f64, filter_i64},
@@ -15,6 +21,8 @@ use crate::{
         Value,
     },
 };
+use atoi::atoi;
+use fast_float::parse as fast_float_parse;
 
 /// Supported column
 #[derive(Debug)]
@@ -118,27 +126,23 @@ impl ColumnarProcessor {
 
         let first_line_start = first_line.as_ptr() as usize - base_ptr;
         for (i, _) in headers.iter().enumerate() {
-            let data = lexical_core::parse::<i64>(first_fields[i])
-                .map(|v| {
-                    let mut nums = Vec::with_capacity(estimated_rows);
-                    nums.push(v);
-                    Column::Int64(nums)
-                })
-                .or_else(|_| {
-                    lexical_core::parse::<f64>(first_fields[i]).map(|v| {
-                        let mut nums = Vec::with_capacity(estimated_rows);
-                        nums.push(v);
-                        Column::Float64(nums)
-                    })
-                })
-                .unwrap_or_else(|_| {
-                    let start = first_line_start
-                        + (first_fields[i].as_ptr() as usize - first_line.as_ptr() as usize);
-                    let end = start + first_fields[i].len();
-                    let mut strs = Vec::with_capacity(estimated_rows);
-                    strs.push((start, end));
-                    Column::Str(strs)
-                });
+            let data = if let Some(v) = atoi::<i64>(first_fields[i]) {
+                let mut nums = Vec::with_capacity(estimated_rows);
+                nums.push(v);
+                Column::Int64(nums)
+            } else if let Ok(v) = fast_float_parse::<f64, _>(first_fields[i]) {
+                let mut nums = Vec::with_capacity(estimated_rows);
+                nums.push(v);
+                Column::Float64(nums)
+            } else {
+                let start = first_line_start
+                    + (first_fields[i].as_ptr() as usize - first_line.as_ptr() as usize);
+                let end = start + first_fields[i].len();
+                let mut strs = Vec::with_capacity(estimated_rows);
+                strs.push((start, end));
+                Column::Str(strs)
+            };
+
             columns.push(data);
         }
 
@@ -167,22 +171,22 @@ impl ColumnarProcessor {
             for i in 0..headers.len() {
                 let col = columns.get_mut(i).unwrap();
                 match col {
-                    Column::Int64(v) => match lexical_core::parse::<i64>(fields[i]) {
-                        Ok(value) => v.push(value),
-                        Err(e) => errors.push(ParseError {
+                    Column::Int64(v) => match atoi::<i64>(fields[i]) {
+                        Some(value) => v.push(value),
+                        None => errors.push(ParseError {
                             row: row_count + 2, // +2 because of header and 0-indexing
                             column: headers[i].clone(),
                             value: String::from_utf8_lossy(fields[i]).to_string(),
-                            error: e.to_string(),
+                            error: None,
                         }),
                     },
-                    Column::Float64(v) => match lexical_core::parse::<f64>(fields[i]) {
+                    Column::Float64(v) => match fast_float_parse::<f64, _>(fields[i]) {
                         Ok(value) => v.push(value),
                         Err(e) => errors.push(ParseError {
                             row: row_count + 2, // +2 because of header and 0-indexing
                             column: headers[i].clone(),
                             value: String::from_utf8_lossy(fields[i]).to_string(),
-                            error: e.to_string(),
+                            error: Some(e.to_string()),
                         }),
                     },
                     Column::Str(v) => {

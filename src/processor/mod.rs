@@ -42,7 +42,7 @@ pub struct ParseError {
     pub row: usize,
     pub column: String,
     pub value: String,
-    pub error: String,
+    pub error: Option<String>,
 }
 
 /// Value helper for predicates (owned for simplicity)
