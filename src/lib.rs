@@ -54,4 +54,9 @@
 
 mod helpers;
 pub mod processor;
+
+#[cfg(feature = "python-bindings")]
 pub mod python;
+
+#[cfg(feature = "jni-bindings")]
+pub mod java;
