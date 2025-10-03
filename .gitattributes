@@ -1,0 +1,3 @@
+# Keep .rs files as LF (no conversion) in the working copy
+*.rs text eol=lf
+**/Cargo.toml text eol=lf
