@@ -1,4 +1,4 @@
-# Columnar Processor Variant
+# Columnar Processor
 
 This project is a **Columnar Processor variant** that provides efficient CSV data processing with querying and aggregation capabilities. It also includes benchmarks, examples, and a performance measurement executable.
 
