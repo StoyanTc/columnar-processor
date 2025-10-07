@@ -40,31 +40,47 @@ impl Column {
     }
 
     pub fn push_chunk_str(&mut self, chunk: Vec<(usize, usize)>) {
-        match self {
-            Column::Str(chunks) => chunks.push(chunk),
-            _ => panic!("Type mismatch"),
+        if let Column::Str(chunks) = self {
+            chunks.push(chunk)
+        } else {
+            panic!("Wrong type")
         }
+
+        // match self {
+        //     Column::Str(chunks) => chunks.push(chunk),
+        //     _ => panic!("Type mismatch"),
+        // }
     }
 
     // Efficient iteration
     pub fn iter_i64(&self) -> impl Iterator<Item = i64> + '_ {
-        match self {
-            Column::Int64(chunks) => {
-                Box::new(chunks.iter().flat_map(|chunk| chunk.iter().copied()))
-                    as Box<dyn Iterator<Item = i64> + '_>
-            }
-            _ => panic!("Wrong type"),
+        if let Column::Int64(chunks) = self {
+            chunks.iter().flat_map(|chunk| chunk.iter().copied())
+        } else {
+            panic!("Wrong type")
         }
+        // match self {
+        //     Column::Int64(chunks) => {
+        //         Box::new(chunks.iter().flat_map(|chunk| chunk.iter().copied()))
+        //             as Box<dyn Iterator<Item = i64> + '_>
+        //     }
+        //     _ => panic!("Wrong type"),
+        // }
     }
 
     pub fn iter_f64(&self) -> impl Iterator<Item = f64> + '_ {
-        match self {
-            Column::Float64(chunks) => {
-                Box::new(chunks.iter().flat_map(|chunk| chunk.iter().copied()))
-                    as Box<dyn Iterator<Item = f64> + '_>
-            }
-            _ => panic!("Wrong type"),
+        if let Column::Float64(chunks) = self {
+            chunks.iter().flat_map(|chunk| chunk.iter().copied())
+        } else {
+            panic!("Wrong type")
         }
+        // match self {
+        //     Column::Float64(chunks) => {
+        //         Box::new(chunks.iter().flat_map(|chunk| chunk.iter().copied()))
+        //             as Box<dyn Iterator<Item = f64> + '_>
+        //     }
+        //     _ => panic!("Wrong type"),
+        // }
     }
 
     pub fn iter_str(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
