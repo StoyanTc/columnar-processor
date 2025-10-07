@@ -1,6 +1,7 @@
 use lru::LruCache;
 
-use crate::processor::columnar_processor::{Column, ColumnarProcessor};
+use crate::processor::column::Column;
+use crate::processor::columnar_processor::ColumnarProcessor;
 use crate::processor::{
     AggregateOp, AggregateResult, FilterPredicate, OperationResult, ProcessorError, Value,
 };
@@ -381,7 +382,7 @@ impl QueryBuilder {
     ) -> Result<HashMap<String, HashMap<String, AggregateResult>>, ProcessorError> {
         let gcol = self.processor.get_col(group_col)?;
         let offsets_keys = match gcol {
-            Column::Str(v) => v,
+            Column::Str(_) => gcol.iter_str().collect::<Vec<(usize, usize)>>(),
             _ => return Err(ProcessorError::Parse("Group column must be string".into())),
         };
 
@@ -437,7 +438,10 @@ impl QueryBuilder {
             .map(|col_name| {
                 let col = self.processor.get_col(col_name)?;
                 match col {
-                    Column::Str(offsets) => Ok((col_name.clone(), offsets)),
+                    Column::Str(_) => Ok((
+                        col_name.clone(),
+                        col.iter_str().collect::<Vec<(usize, usize)>>(),
+                    )),
                     _ => Err(ProcessorError::Parse(format!(
                         "Group-by column '{}' must be string",
                         col_name
@@ -508,12 +512,18 @@ impl QueryBuilder {
         let col = self.processor.get_col(column)?;
 
         match col {
-            Column::Int64(values) => {
-                let filtered_values: Vec<i64> = rows.iter().map(|&i| values[i]).collect();
+            Column::Int64(_) => {
+                let filtered_values: Vec<i64> = rows
+                    .iter()
+                    .map(|&i| col.iter_i64().collect::<Vec<i64>>()[i])
+                    .collect();
                 self.aggregate_int_values(&filtered_values, op)
             }
-            Column::Float64(values) => {
-                let filtered_values: Vec<f64> = rows.iter().map(|&i| values[i]).collect();
+            Column::Float64(_) => {
+                let filtered_values: Vec<f64> = rows
+                    .iter()
+                    .map(|&i| col.iter_f64().collect::<Vec<f64>>()[i])
+                    .collect();
                 self.aggregate_float_values(&filtered_values, op)
             }
             _ => Err(ProcessorError::Parse(
@@ -532,13 +542,19 @@ impl QueryBuilder {
         let col = self.processor.get_col(column)?;
 
         match col {
-            Column::Int64(values) => {
-                let filtered_values: Vec<i64> = rows.iter().map(|&i| values[i]).collect();
+            Column::Int64(_) => {
+                let filtered_values: Vec<i64> = rows
+                    .iter()
+                    .map(|&i| col.iter_i64().collect::<Vec<i64>>()[i])
+                    .collect();
                 let result = self.aggregate_int_values(&filtered_values, op)?;
                 Ok(result)
             }
-            Column::Float64(values) => {
-                let filtered_values: Vec<f64> = rows.iter().map(|&i| values[i]).collect();
+            Column::Float64(_) => {
+                let filtered_values: Vec<f64> = rows
+                    .iter()
+                    .map(|&i| col.iter_f64().collect::<Vec<f64>>()[i])
+                    .collect();
                 let result = self.aggregate_float_values(&filtered_values, op)?;
                 Ok(result)
             }
@@ -561,19 +577,19 @@ impl QueryBuilder {
 
         // Only support string group keys
         let offsets_keys = match gcol {
-            Column::Str(v) => v,
+            Column::Str(_) => gcol.iter_str().collect::<Vec<(usize, usize)>>(),
             _ => return Err(ProcessorError::Parse("group_col must be string".into())),
         };
 
         match acol {
-            Column::Int64(values) => {
+            Column::Int64(_) => {
                 let mut map: HashMap<String, Vec<i64>> = HashMap::new();
 
                 for &row_idx in &rows {
                     let (ks, ke) = offsets_keys[row_idx];
                     let key_bytes = self.processor.slice_bytes(ks, ke)?;
                     let key = String::from_utf8_lossy(key_bytes).to_string();
-                    let value = values[row_idx];
+                    let value = acol.iter_i64().collect::<Vec<i64>>()[row_idx];
 
                     map.entry(key).or_default().push(value);
                 }
@@ -586,14 +602,14 @@ impl QueryBuilder {
 
                 Ok(result)
             }
-            Column::Float64(values) => {
+            Column::Float64(_) => {
                 let mut map: HashMap<String, Vec<f64>> = HashMap::new();
 
                 for &row_idx in &rows {
                     let (ks, ke) = offsets_keys[row_idx];
                     let key_bytes = self.processor.slice_bytes(ks, ke)?;
                     let key = String::from_utf8_lossy(key_bytes).to_string();
-                    let value = values[row_idx];
+                    let value = acol.iter_f64().collect::<Vec<f64>>()[row_idx];
 
                     map.entry(key).or_default().push(value);
                 }
@@ -620,10 +636,12 @@ impl QueryBuilder {
 
             for &row_idx in &rows {
                 let value = match col {
-                    Column::Int64(values) => Value::Int(values[row_idx]),
-                    Column::Float64(values) => Value::Float(values[row_idx]),
-                    Column::Str(offsets) => {
-                        let (start, end) = offsets[row_idx];
+                    Column::Int64(_) => Value::Int(col.iter_i64().collect::<Vec<i64>>()[row_idx]),
+                    Column::Float64(_) => {
+                        Value::Float(col.iter_f64().collect::<Vec<f64>>()[row_idx])
+                    }
+                    Column::Str(_) => {
+                        let (start, end) = col.iter_str().collect::<Vec<(usize, usize)>>()[row_idx];
                         let bytes = self.processor.slice_bytes(start, end)?;
                         let s = String::from_utf8_lossy(bytes).to_string();
                         Value::Str(s)

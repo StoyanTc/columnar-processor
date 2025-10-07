@@ -3,6 +3,7 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use thiserror::Error;
 
+pub mod column;
 pub mod columnar_processor;
 pub mod query_builder;
 
@@ -43,6 +44,14 @@ pub struct ParseError {
     pub column: String,
     pub value: String,
     pub error: Option<String>,
+}
+
+pub struct BatchResult {
+    pub int64_batches: Vec<Vec<i64>>,
+    pub float64_batches: Vec<Vec<f64>>,
+    pub str_batches: Vec<Vec<(usize, usize)>>,
+    pub row_count: usize,
+    pub errors: Vec<ParseError>,
 }
 
 /// Value helper for predicates (owned for simplicity)
