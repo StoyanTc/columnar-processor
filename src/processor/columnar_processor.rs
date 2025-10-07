@@ -561,7 +561,7 @@ impl ColumnarProcessor {
 
         // only support string group keys
         let offsets_keys = match gcol {
-            Column::Str(_) => acol.iter_str().collect::<Vec<(usize, usize)>>(),
+            Column::Str(_) => gcol.iter_str().collect::<Vec<(usize, usize)>>(),
             _ => return Err(ProcessorError::Parse("group_col must be string".into())),
         };
 

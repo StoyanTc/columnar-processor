@@ -60,6 +60,6 @@ name = "scalability"
 harness = false
 
 [[bench]]
-name = "comparison"
+name = "polars_comparison"
 harness = false
 
