@@ -1,7 +1,8 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use columnar_processor::processor::columnar_processor::ColumnarProcessor;
 use jemallocator::Jemalloc;
+use polars::{io::SerReader, prelude::CsvReadOptions};
 
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
@@ -13,13 +14,18 @@ fn main() {
     println!("Starting a single run of the 'aggregate_sum_value' benchmark...");
 
     // Example with synthetic dataset
-    let path = Path::new("data/data_10m.csv"); // <-- place your test CSV here
+    let path = Path::new("/home/stoyan/data_10m.csv"); // <-- place your test CSV here
 
     // Perform the operation you want to profile
     let mut processor = ColumnarProcessor::new();
-    //processor.load_csv_chunked(path, 10_000).unwrap();
     processor.load_csv(path).unwrap();
     //let result = processor.aggregate("value", AggregateOp::Sum).unwrap();
+    // let _df = CsvReadOptions::default()
+    //     .with_has_header(true)
+    //     .try_into_reader_with_file_path(Some(PathBuf::from(path)))
+    //     .unwrap()
+    //     .finish()
+    //     .unwrap();
 
     //println!("Aggregation result: {:?}", result);
 }

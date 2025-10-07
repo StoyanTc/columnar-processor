@@ -15,7 +15,7 @@ fn load_and_sum(c: &mut Criterion) {
     group.sample_size(10);
 
     // Example with synthetic dataset
-    let path = Path::new("data/data_10m.csv"); // <-- place your test CSV here
+    let path = Path::new("/home/stoyan/data_10m.csv"); // <-- place your test CSV here
 
     group.throughput(Throughput::Elements(10_000_000)); // adjust based on dataset size
     group.bench_function("load_csv", |b| {

@@ -133,20 +133,22 @@ impl ColumnarProcessor {
         let mut total_rows = 0;
         let mut all_errors = Vec::new();
 
-        for batch in batch_results {
+        for mut batch in batch_results {
             total_rows += batch.row_count;
             all_errors.extend(batch.errors);
 
-            for (col_idx, column) in columns.iter_mut().enumerate() {
-                match column {
-                    Column::Int64(_) => {
-                        column.push_chunk_int64(batch.int64_batches[col_idx].clone());
+            // Move each column's data
+            for col_idx in 0..columns.len() {
+                match &mut columns[col_idx] {
+                    Column::Int64(chunks) => {
+                        // Move the vec out of batch
+                        chunks.push(std::mem::take(&mut batch.int64_batches[col_idx]));
                     }
-                    Column::Float64(_) => {
-                        column.push_chunk_float64(batch.float64_batches[col_idx].clone());
+                    Column::Float64(chunks) => {
+                        chunks.push(std::mem::take(&mut batch.float64_batches[col_idx]));
                     }
-                    Column::Str(_) => {
-                        column.push_chunk_str(batch.str_batches[col_idx].clone());
+                    Column::Str(chunks) => {
+                        chunks.push(std::mem::take(&mut batch.str_batches[col_idx]));
                     }
                 }
             }
